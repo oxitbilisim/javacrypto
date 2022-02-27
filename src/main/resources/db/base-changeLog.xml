@@ -1,0 +1,702 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext
+   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd
+   http://www.liquibase.org/xml/ns/dbchangelog
+   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <changeSet author="sseven" id="initial">
+        <sqlFile relativeToChangelogFile="true" path="sql/initial.sql"></sqlFile>
+    </changeSet>
+    <changeSet author="sseven" id="Oauth2Schema">
+        <sqlFile relativeToChangelogFile="true" path="sql/Oauth2Schema.sql"></sqlFile>
+    </changeSet>
+    <changeSet author="sseven" id="addLanguageKey">
+        <sqlFile relativeToChangelogFile="true" path="sql/addLanguageKey.sql" splitStatements="false"></sqlFile>
+    </changeSet>
+    <changeSet author="sseven" id="initialUser">
+        <sqlFile relativeToChangelogFile="true" path="sql/initialUser.sql"></sqlFile>
+    </changeSet>
+
+    <changeSet id="create_walletying_db_user" author="sse">
+        <sql>
+            create user walletying with password 'postgres';
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_exchange_info_table" author="sse">
+        <createTable tableName="exchange_info">
+            <column name="symbol" type="varchar(10)"></column>
+            <column name="status" type="varchar(10)"></column>
+            <column name="base_asset" type="varchar(10)"></column>
+            <column name="base_asset_precision" type="number(10)"></column>
+            <column name="quote_asset" type="varchar(10)"></column>
+            <column name="quote_precision" type="number(10)"></column>
+            <column name="quote_asset_precision" type="number(10)"></column>
+            <column name="base_commission_precision" type="number(10)"></column>
+            <column name="quote_commission_precision" type="number(10)"></column>
+            <column name="permissions" type="varchar(100)"></column>
+        </createTable>
+        <addPrimaryKey tableName="exchange_info" columnNames="symbol"></addPrimaryKey>
+    </changeSet>
+
+    <changeSet id="create_exchange_table" author="sse">
+        <createTable tableName="exchange">
+            <column name="id" type="bigint"></column>
+            <column name="name" type="varchar(100)"></column>
+            <column name="description" type="varchar(200)"></column>
+            <column name="row_num" type="number(10)"></column>
+            <column name="logo" type="blob"></column>
+            <column name="active" type="boolean"></column>
+        </createTable>
+        <addPrimaryKey tableName="exchange" columnNames="id"></addPrimaryKey>
+    </changeSet>
+
+    <changeSet id="create_seq_exchange" author="sse">
+        <createSequence sequenceName="seq_exchange"></createSequence>
+    </changeSet>
+
+    <changeSet id="create_wallet_table" author="sse">
+        <createTable tableName="wallet">
+            <column name="id" type="bigint"></column>
+            <column name="name" type="varchar(100)"></column>
+            <column name="description" type="varchar(200)"></column>
+            <column name="api_key" type="varchar(100)"></column>
+            <column name="secret_key" type="varchar(100)"></column>
+            <column name="wallet_update_date" type="date"></column>
+            <column name="sync_date" type="date"></column>
+            <column name="exchange_id" type="bigint"></column>
+            <column name="user_id" type="varchar(100)" defaultValueComputed="current_setting('app.current_user_id')"></column>
+
+        </createTable>
+        <addPrimaryKey tableName="wallet" columnNames="id"></addPrimaryKey>
+        <addForeignKeyConstraint baseTableName="wallet" baseColumnNames="exchange_id" constraintName="wallet_exchange_id_exchange_id_fk" referencedTableName="exchange"
+                                 referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE wallet ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY wallet_policy ON wallet USING (user_id = current_setting('app.current_user_id')::VARCHAR);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_seq_wallet" author="sse">
+        <createSequence sequenceName="seq_wallet"></createSequence>
+    </changeSet>
+
+    <changeSet id="create_balance_table" author="sse">
+        <createTable tableName="balance">
+            <column name="id" type="bigint"></column>
+            <column name="wallet_id" type="bigint"></column>
+            <column name="asset" type="varchar(20)"></column>
+            <column name="free" type="number(24,12)"></column>
+            <column name="locked" type="number(24,12)"></column>
+            <column name="user_id" type="varchar(100)" defaultValueComputed="current_setting('app.current_user_id')"></column>
+
+        </createTable>
+        <addPrimaryKey tableName="balance" columnNames="id"></addPrimaryKey>
+        <addForeignKeyConstraint baseTableName="balance" baseColumnNames="wallet_id" constraintName="balance_wallet_id_wallet_id_fk" referencedTableName="wallet"
+                                 referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE balance ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY balance_policy ON balance USING (user_id = current_setting('app.current_user_id')::VARCHAR);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_seq_balance" author="sse">
+        <createSequence sequenceName="seq_balance"></createSequence>
+    </changeSet>
+
+    <changeSet id="create_trade" author="sse">
+        <createTable tableName="trade">
+            <column name="id" type="bigint"></column>
+            <column name="wallet_id" type="bigint"></column>
+            <column name="s_id" type="bigint"></column>
+            <column name="symbol" type="varchar(20)"></column>
+            <column name="order_id" type="bigint"></column>
+            <column name="order_list_id" type="bigint"></column>
+            <column name="price" type="number(24,12)"></column>
+            <column name="qty" type="number(24,12)"></column>
+            <column name="quote_qty" type="number(24,12)"></column>
+            <column name="commission" type="number(24,12)"></column>
+            <column name="commission_asset" type="varchar(20)"></column>
+            <column name="time" type="bigint"></column>
+            <column name="is_buyer" type="boolean"></column>
+            <column name="is_maker" type="boolean"></column>
+            <column name="is_best_match" type="boolean"></column>
+            <column name="user_id" type="varchar(100)" defaultValueComputed="current_setting('app.current_user_id')"></column>
+        </createTable>
+        <addPrimaryKey tableName="trade" columnNames="id"></addPrimaryKey>
+        <addForeignKeyConstraint baseTableName="trade" baseColumnNames="wallet_id" constraintName="trade_wallet_id_wallet_id_fk" referencedTableName="wallet"
+                                 referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE trade ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY trade_policy ON trade USING (user_id = current_setting('app.current_user_id')::VARCHAR);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_seq_trade" author="sse">
+        <createSequence sequenceName="seq_trade"></createSequence>
+    </changeSet>
+    
+    <changeSet id="add_col_lang_1" author="sse">
+        <addColumn tableName="s_language">
+            <column name="flag_base64" type="blob"></column>
+            <column name="active" type="boolean"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add_lang" author="sse">
+        <sql>
+            INSERT INTO s_language (language_code, language, rtl, row_num, flag_base64, active) VALUES ('tr', 'Türkçe', false, 2, null, true);
+            INSERT INTO s_language (language_code, language, rtl, row_num, flag_base64, active) VALUES ('en', 'English', false, 1, null, true);
+        </sql>
+    </changeSet>
+
+    <changeSet id="add_lang_login_1" author="sse">
+        <sql>call add_language('en','LOGIN.WELCOMEMESSAGE','Welcome to Walletying!')</sql>
+        <sql>call add_language('tr','LOGIN.WELCOMEMESSAGE','Walletying''e Hoş Geldiniz')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_login_2" author="sse">
+        <sql>call add_language('en','LOGIN.LOGIN_TO_YOUR_ACCOUNT','Login to your account')</sql>
+        <sql>call add_language('tr','LOGIN.LOGIN_TO_YOUR_ACCOUNT','Hesabınıza Giriş Yapın')</sql>
+        <sql>call add_language('en','LOGIN.EMAIL','Email')</sql>
+        <sql>call add_language('tr','LOGIN.EMAIL','E-posta')</sql>
+        <sql>call add_language('en','LOGIN.PASSWORD','Password')</sql>
+        <sql>call add_language('tr','LOGIN.PASSWORD','Parola')</sql>
+        <sql>call add_language('en','LOGIN.FORGET_PASSWORD','Forget Password?')</sql>
+        <sql>call add_language('tr','LOGIN.FORGET_PASSWORD','Parolamı Unuttum')</sql>
+        <sql>call add_language('en','LOGIN.LOGIN','Login')</sql>
+        <sql>call add_language('tr','LOGIN.LOGIN','Giriş')</sql>
+        <sql>call add_language('en','LOGIN.DONT_HAVE_AN_ACCOUNT','Dont''t have an account?')</sql>
+        <sql>call add_language('tr','LOGIN.DONT_HAVE_AN_ACCOUNT','Hesabınız Yok mu?')</sql>
+        <sql>call add_language('en','LOGIN.CREATE_AN_ACCOUNT','Create an account')</sql>
+        <sql>call add_language('tr','LOGIN.CREATE_AN_ACCOUNT','Hesap oluşturun')</sql>
+        <sql>call add_language('en','LOGIN.EMAIL_IS_REQUIED','Email is required')</sql>
+        <sql>call add_language('tr','LOGIN.EMAIL_IS_REQUIED','E-posta boş bırakılamaz')</sql>
+        <sql>call add_language('en','LOGIN.PASSWORD_IS_REQUIRED','Password is required')</sql>
+        <sql>call add_language('tr','LOGIN.PASSWORD_IS_REQUIRED','Parola boş bırakılamaz')</sql>
+    </changeSet>
+    <changeSet id="add_lang_login_3" author="sse">
+        <sql>call add_language('en','LOGIN.ENTER_VALID_EMAIL','Please enter a valid email address')</sql>
+        <sql>call add_language('tr','LOGIN.ENTER_VALID_EMAIL','Geçersiz e-posta adresi')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_menu_1" author="sse">
+        <sql>call add_language('en','MENU.HOME','Dashboard')</sql>
+        <sql>call add_language('tr','MENU.HOME','Anasayfa')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_navbar_1" author="sse">
+        <sql>call add_language('en','NAVBAR.MY_PROFILE','My Profile')</sql>
+        <sql>call add_language('tr','NAVBAR.MY_PROFILE','Profilim')</sql>
+        <sql>call add_language('en','NAVBAR.LOGOUT','Logout')</sql>
+        <sql>call add_language('tr','NAVBAR.LOGOUT','Çıkış')</sql>
+        <sql>call add_language('en','NAVBAR.SEARCH','Search')</sql>
+        <sql>call add_language('tr','NAVBAR.SEARCH','Ara')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_menu_2" author="sse">
+        <sql>call add_language('en','MENU.WALLETS','Wallets')</sql>
+        <sql>call add_language('tr','MENU.WALLETS','Cüzdanlar')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_wallets_1" author="sse">
+        <sql>call add_language('en','WALLETS.WALLETS','Wallets')</sql>
+        <sql>call add_language('tr','WALLETS.WALLETS','Cüzdanlar')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_wallets_2_" author="sse">
+        <sql>call add_language('en','WALLETS.WALLETYING','Walletying')</sql>
+        <sql>call add_language('tr','WALLETS.WALLETYING','Cüzdan Bağla')</sql>
+        <sql>call add_language('en','WALLETS.EXCHANGE_NAME','ExchangeDto Name')</sql>
+        <sql>call add_language('tr','WALLETS.EXCHANGE_NAME','Borsa Adı')</sql>
+        <sql>call add_language('en','WALLETS.WALLET_NAME','Wallet Name')</sql>
+        <sql>call add_language('tr','WALLETS.WALLET_NAME','Cüzdan Adı')</sql>
+        <sql>call add_language('en','WALLETS.DESCRIPTION','Description')</sql>
+        <sql>call add_language('tr','WALLETS.DESCRIPTION','Açıklama')</sql>
+        <sql>call add_language('en','WALLETS.STATUS','Status')</sql>
+        <sql>call add_language('tr','WALLETS.STATUS','Durum')</sql>
+    </changeSet>
+
+    <changeSet id="add_col_wallet_status" author="sse">
+        <addColumn tableName="wallet">
+            <column name="status" type="varchar(50)"></column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="add_col_exchange_code" author="sse">
+        <addColumn tableName="exchange">
+            <column name="code" type="varchar(50)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add_binance_1" author="sse">
+        <sql>
+            INSERT INTO exchange (id, name, description, row_num, logo, active,code) VALUES (nextval('seq_exchange'), 'Binance', null, 1, null, true,'BINANCE');
+        </sql>
+    </changeSet>
+
+    <changeSet id="add_lang_wallets_form_1" author="sse">
+        <sql>call add_language('en','WALLET.NEW_WALLET','New Wallet')</sql>
+        <sql>call add_language('tr','WALLET.NEW_WALLET','Yeni Cüzdan')</sql>
+        <sql>call add_language('en','WALLET.CHECK','CHECK')</sql>
+        <sql>call add_language('tr','WALLET.CHECK','DOĞRULA')</sql>
+        <sql>call add_language('en','WALLET.SAVE','SAVE')</sql>
+        <sql>call add_language('tr','WALLET.SAVE','KAYDET')</sql>
+        <sql>call add_language('en','WALLET.WALLET_NAME','Wallet Name')</sql>
+        <sql>call add_language('tr','WALLET.WALLET_NAME','Cüzdan Adı')</sql>
+        <sql>call add_language('en','WALLET.DESCRIPTION','Description')</sql>
+        <sql>call add_language('tr','WALLET.DESCRIPTION','Açıklama')</sql>
+        <sql>call add_language('en','WALLET.EXCHANGE','Exchabge')</sql>
+        <sql>call add_language('tr','WALLET.EXCHANGE','Borsa')</sql>
+        <sql>call add_language('en','WALLET.API_KEY','API Key')</sql>
+        <sql>call add_language('tr','WALLET.API_KEY','API Anahtarı')</sql>
+        <sql>call add_language('en','WALLET.SECRET_KEY','Secret Key')</sql>
+        <sql>call add_language('tr','WALLET.SECRET_KEY','Gizli Anahtar')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_wallets_form_2_" author="sse">
+        <sql>call add_language('en','WALLET.WALLET_NAME_REQUIRED','Wallet Name is required!')</sql>
+        <sql>call add_language('tr','WALLET.WALLET_NAME_REQUIRED','Cüzdan Adı boş bırakılamaz!')</sql>
+        <sql>call add_language('en','WALLET.EXCHANGE_REQUIRED','ExchangeDto is required!')</sql>
+        <sql>call add_language('tr','WALLET.EXCHANGE_REQUIRED','Borsa Seçimi zorunludur!')</sql>
+        <sql>call add_language('en','WALLET.API_KEY_REQUIRED','API Key is required!')</sql>
+        <sql>call add_language('tr','WALLET.API_KEY_REQUIRED','API Anahtarı boş bırakılamaz!')</sql>
+        <sql>call add_language('en','WALLET.SECRET_KEY_REQUIRED','Secret Key is required!')</sql>
+        <sql>call add_language('tr','WALLET.SECRET_KEY_REQUIRED','Gizli Anahtar boş bırakılamaz!')</sql>
+
+    </changeSet>
+    <changeSet id="add_lang_wallets_form_3_" author="sse">
+        <sql>call add_language('en','WALLET.EXCHANGE','ExchangeDto')</sql>
+    </changeSet>
+    <changeSet id="add_lang_wallets_form_4" author="sse">
+        <sql>call add_language('en','WALLET.MSG.ACCOUNT_VERIFY_ERROR','Account couldn''t verify!')</sql>
+        <sql>call add_language('tr','WALLET.MSG.ACCOUNT_VERIFY_ERROR','Hesap doğrulanamadı!')</sql>
+        <sql>call add_language('en','SYS.ERROR','Error!')</sql>
+        <sql>call add_language('tr','SYS.ERROR','Hata!')</sql>
+    </changeSet>
+    <changeSet id="add_lang_wallets_form_5" author="sse">
+        <sql>call add_language('en','WALLET.MSG.WALLET_INFO_DOWNLOAD_ERROR','Wallet information couldn''t download!')</sql>
+        <sql>call add_language('tr','WALLET.MSG.WALLET_INFO_DOWNLOAD_ERROR','Cüzdan bilgileri indirilemedi!')</sql>
+    </changeSet>
+    <changeSet id="add_lang_wallets_form_6" author="sse">
+        <sql>call add_language('en','WALLET.WALLET_IS_CREATING','Wallet is creating..')</sql>
+        <sql>call add_language('tr','WALLET.WALLET_IS_CREATING','Cüzdan oluşturuluyor..')</sql>
+        <sql>call add_language('en','WALLET.DATA_IS_FETCHING','Data is fetching..')</sql>
+        <sql>call add_language('tr','WALLET.DATA_IS_FETCHING','Veriler indiriliyor..')</sql>
+        <sql>call add_language('en','WALLET.DATA_IS_SAVING','Data is saving..')</sql>
+        <sql>call add_language('tr','WALLET.DATA_IS_SAVING','Veriler kaydediliyor..')</sql>
+        <sql>call add_language('en','WALLET.COMPLETED','Completed')</sql>
+        <sql>call add_language('tr','WALLET.COMPLETED','Tamamlandı')</sql>
+    </changeSet>
+    <changeSet id="add_lang_wallets_form_8" author="sse">
+        <sql>call add_language('en','SYS.SOMETHING_WENT_WRONG','Something went wrong')</sql>
+        <sql>call add_language('tr','SYS.SOMETHING_WENT_WRONG','Bir şeyler ters gitti')</sql>
+    </changeSet>
+    <changeSet id="add_lang_wallets_form_9" author="sse">
+        <sql>call add_language('en','SYS.SUCCESS','Success')</sql>
+        <sql>call add_language('tr','SYS.SUCCESS','Başarılı')</sql>
+        <sql>call add_language('en','WALLET.WALLETYING_SUCCESS','Walletying')</sql>
+        <sql>call add_language('tr','WALLET.WALLETYING_SUCCESS','Cüzdan bağlandı')</sql>
+    </changeSet>
+
+
+    <changeSet id="create_label" author="sse">
+        <createTable tableName="label">
+            <column name="id" type="bigint"></column>
+            <column name="name" type="varchar(100)"></column>
+            <column name="description" type="varchar(1000)"></column>
+            <column name="color_code" type="varchar(20)"></column>
+            <column name="user_id" type="varchar(100)" defaultValueComputed="current_setting('app.current_user_id')"></column>
+        </createTable>
+        <addPrimaryKey tableName="label" columnNames="id"></addPrimaryKey>
+        <sql>
+            ALTER TABLE label ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY label_policy ON trade USING (user_id = current_setting('app.current_user_id')::VARCHAR);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_seq_label" author="sse">
+        <createSequence sequenceName="seq_label"></createSequence>
+    </changeSet>
+
+    <changeSet id="create_s_parameter" author="sse">
+        <createTable tableName="s_parameter">
+            <column name="id" type="bigint"></column>
+            <column name="category" type="varchar(255)"></column>
+            <column name="code" type="varchar(255)"></column>
+            <column name="custom_code_1" type="varchar(255)"></column>
+            <column name="custom_code_2" type="varchar(255)"></column>
+            <column name="value" type="varchar(500)"></column>
+            <column name="row_num" type="int"></column>
+        </createTable>
+        <addPrimaryKey tableName="s_parameter" columnNames="id"></addPrimaryKey>
+    </changeSet>
+
+    <changeSet id="create_seq_s_parameter" author="sse">
+        <createSequence sequenceName="seq_s_parameter"></createSequence>
+    </changeSet>
+    <changeSet id="insert_binance_api_url" author="sse">
+        <sql>insert into s_parameter (id, category, code, custom_code_1, custom_code_2, row_num, value) VALUES (nextval('seq_s_parameter'),'APIURL','BINANCE',null,null,0,'https://api.binance.com')</sql>
+        <sql>insert into s_parameter (id, category, code, custom_code_1, custom_code_2, row_num, value) VALUES (nextval('seq_s_parameter'),'APIURI','BINANCE_EXCHANGE_INFO',null,null,0,'/api/v3/exchangeInfo')</sql>
+    </changeSet>
+
+    <changeSet id="add_permission_to_walletying" author="sse">
+        <sql>
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+    <changeSet id="modify_col_size_exchage_info" author="sse">
+        <sql>
+            alter table exchange_info alter column symbol type varchar(50);
+            alter table exchange_info alter column status type varchar(50);
+            alter table exchange_info alter column base_asset type varchar(50);
+            alter table exchange_info alter column quote_asset type varchar(50);
+        </sql>
+    </changeSet>
+
+    <changeSet id="trade_add_column_quote_base_price" author="sse">
+        <addColumn tableName="trade">
+            <column name="quote_base_price" type="number(24,12)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="create_order_exchange" author="sse">
+        <createTable tableName="order_exchange">
+            <column name="id" type="bigint"></column>
+            <column name="wallet_id" type="bigint"></column>
+            <column name="symbol" type="varchar(50)"></column>
+            <column name="order_id" type="bigint"></column>
+            <column name="order_list_id" type="bigint"></column>
+            <column name="client_order_id" type="varchar(255)"></column>
+            <column name="price" type="number(24,12)"></column>
+            <column name="orig_qty" type="number(24,12)"></column>
+            <column name="executed_qty" type="number(24,12)"></column>
+            <column name="cummulative_quote_qty" type="number(24,12)"></column>
+            <column name="status" type="varchar(50)"></column>
+            <column name="time_in_force" type="varchar(50)"></column>
+            <column name="type" type="varchar(50)"></column>
+            <column name="side" type="varchar(50)"></column>
+            <column name="stop_price" type="number(24,12)"></column>
+            <column name="iceberg_qty" type="number(24,12)"></column>
+            <column name="time" type="bigint"></column>
+            <column name="update_time" type="bigint"></column>
+            <column name="is_working" type="boolean"></column>
+            <column name="orig_quote_order_qty" type="number(24,12)"></column>
+            <column name="user_id" type="varchar(100)" defaultValueComputed="current_setting('app.current_user_id')"></column>
+        </createTable>
+        <addPrimaryKey tableName="order_exchange" columnNames="id"></addPrimaryKey>
+        <addForeignKeyConstraint baseTableName="order_exchange" baseColumnNames="wallet_id" constraintName="order_wallet_id_wallet_id_fk" referencedTableName="wallet"
+                                 referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE order_exchange ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY order_exchange_policy ON order_exchange USING (user_id = current_setting('app.current_user_id')::VARCHAR);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_seq_order_exchange" author="sse">
+        <createSequence sequenceName="seq_order_exchange"></createSequence>
+    </changeSet>
+
+    <changeSet id="add_permission_to_walletying_1" author="sse">
+        <sql>
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_deposit" author="sse">
+        <createTable tableName="deposit">
+            <column name="id" type="bigint"></column>
+            <column name="wallet_id" type="bigint"></column>
+            <column name="asset" type="varchar(50)"></column>
+            <column name="insert_time" type="bigint"></column>
+            <column name="amount" type="number(24,12)"></column>
+            <column name="creator" type="varchar(255)"></column>
+            <column name="address" type="varchar(255)"></column>
+            <column name="address_tag" type="varchar(255)"></column>
+            <column name="tx_id" type="varchar(255)"></column>
+            <column name="status" type="number(5)"></column>
+
+            <column name="user_id" type="varchar(100)" defaultValueComputed="current_setting('app.current_user_id')"></column>
+        </createTable>
+        <addPrimaryKey tableName="deposit" columnNames="id"></addPrimaryKey>
+        <addForeignKeyConstraint baseTableName="deposit" baseColumnNames="wallet_id" constraintName="order_wallet_id_wallet_id_fk" referencedTableName="wallet"
+                                 referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE deposit ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY deposit_policy ON deposit USING (user_id = current_setting('app.current_user_id')::VARCHAR);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_seq_deposit" author="sse">
+        <createSequence sequenceName="seq_deposit"></createSequence>
+    </changeSet>
+
+    <changeSet id="create_withdraw" author="sse">
+        <createTable tableName="withdraw">
+            <column name="id" type="bigint"></column>
+            <column name="wallet_id" type="bigint"></column>
+            <column name="asset" type="varchar(50)"></column>
+            <column name="amount" type="number(24,12)"></column>
+            <column name="transaction_fee" type="number(24,12)"></column>
+            <column name="address" type="varchar(255)"></column>
+            <column name="withdraw_order_id" type="varchar(255)"></column>
+            <column name="withdraw_id" type="varchar(255)"></column>
+            <column name="apply_time" type="bigint"></column>
+            <column name="status" type="number(5)"></column>
+            <column name="network" type="varchar(50)"></column>
+
+            <column name="user_id" type="varchar(100)" defaultValueComputed="current_setting('app.current_user_id')"></column>
+        </createTable>
+        <addPrimaryKey tableName="withdraw" columnNames="id"></addPrimaryKey>
+        <addForeignKeyConstraint baseTableName="withdraw" baseColumnNames="wallet_id" constraintName="order_wallet_id_wallet_id_fk" referencedTableName="wallet"
+                                 referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE withdraw ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY withdraw_policy ON withdraw USING (user_id = current_setting('app.current_user_id')::VARCHAR);
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_seq_withdraw" author="sse">
+        <createSequence sequenceName="seq_withdraw"></createSequence>
+    </changeSet>
+
+    <changeSet id="add_permission_to_walletying_2" author="sse">
+        <sql>
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+
+
+    <changeSet id="update_withdraw_table_1" author="sse">
+        <dropColumn tableName="withdraw" columnName="asset" />
+        <dropColumn tableName="withdraw" columnName="withdraw_order_id" />
+        <addColumn tableName="withdraw">
+            <column name="coin" type="varchar(50)"></column>
+            <column name="transfer_type" type="number(5)"></column>
+            <column name="tx_id" type="varchar(255)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="update_deposit_table_1" author="sse">
+        <dropColumn tableName="deposit" columnName="asset" />
+        <dropColumn tableName="deposit" columnName="creator" />
+
+        <addColumn tableName="deposit">
+            <column name="coin" type="varchar(50)"></column>
+            <column name="transfer_type" type="number(5)"></column>
+            <column name="confirm_times" type="varchar(10)"></column>
+            <column name="network" type="varchar(50)"></column>
+        </addColumn>
+
+    </changeSet>
+
+    <changeSet id="create_dominance_table" author="sse">
+        <createTable tableName="dominance">
+            <column name="symbol" type="varchar(50)"></column>
+            <column name="dominance" type="number(5,2)"></column>
+        </createTable>
+        <addPrimaryKey tableName="dominance" columnNames="symbol"/>
+    </changeSet>
+
+    <changeSet id="add_permission_to_walletying_3" author="sse">
+        <sql>
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+
+    <changeSet id="insert_binance_api_url_klines" author="sse">
+        <sql>insert into s_parameter (id, category, code, custom_code_1, custom_code_2, row_num, value) VALUES (nextval('seq_s_parameter'),'APIURI','BINANCE_KLINES',null,null,0,'/api/v3/klines')</sql>
+    </changeSet>
+    
+    <changeSet id="create_trade_conversion_path" author="sse">
+        <createTable tableName="trade_conversion_path">
+            <column name="id" type="bigint"></column>
+            <column name="trade_id" type="bigint"></column>
+            <column name="symbol" type="varchar(50)"></column>
+            <column name="price" type="number(24,12)"></column>
+            <column name="row_num" type="number(10)"></column>
+        </createTable>
+        <addPrimaryKey tableName="trade_conversion_path" columnNames="id"/>
+        <addForeignKeyConstraint baseTableName="trade_conversion_path" baseColumnNames="trade_id" constraintName="trade_conversion_path_trade_id_trade_id" referencedTableName="trade"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="create_seq_trade_conversion_path" author="sse">
+        <createSequence sequenceName="seq_trade_conversion_path"/>
+    </changeSet>
+
+    <changeSet id="add_permission_to_walletying_4" author="sse">
+        <sql>
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+    
+    <changeSet id="add_column_trade_btc" author="sse">
+        <addColumn tableName="trade">
+            <column name="btc_value" type="number(24,12)"></column>
+            <column name="btc_usd_price" type="number(24,12)" remarks="timedaki btc nin usd değeri"></column>
+            <column name="user_currency_value" type="number(24,12)" remarks="timedaki btcnin kullancının istediği birimdeki değeri(örn. BTCTRY)"></column>
+            <column name="commission_btc_value" type="number(24,12)" remarks="komisyonun btc türünden timedaki değeri"></column>
+            <column name="btc_pnl" type="number(24,12)" remarks="kar zarar sonucu,btc cinsinden"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add_column_trade_conversion_path_base_symbol" author="sse">
+        <addColumn tableName="trade_conversion_path">
+            <column name="reverse_direction" type="number(5)"></column>
+            <column name="group_symbol" type="varchar(50)"></column>
+            <column name="kline_time" type="number(38)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="change_column_type_conversion_path_base_symbol" author="sse">
+        <sql>
+            alter table trade_conversion_path drop column reverse_direction;
+            alter table trade_conversion_path add reverse_direction boolean;
+        </sql>
+    </changeSet>
+
+    <changeSet id="create_balance_leg_table" author="sse">
+        <createTable tableName="balance_leg">
+            <column name="id" type="bigint"></column>
+            <column name="balance_id" type="bigint"></column>
+            <column name="total_pnl_percent" type="number(24,12)"></column>
+            <column name="total_pnl" type="number(24,12)"></column>
+            <column name="is_open" type="boolean"></column>
+            <column name="start_time" type="number(38)"></column>
+            <column name="end_time" type="number(38)"></column>
+        </createTable>
+        <addPrimaryKey tableName="balance_leg" columnNames="id"/>
+        <addForeignKeyConstraint baseTableName="balance_leg" baseColumnNames="balance_id" constraintName="balance_leg_balance_id_balance_id" referencedTableName="trade"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="create_seq_balance_leg" author="sse">
+        <createSequence sequenceName="seq_balance_leg"/>
+    </changeSet>
+
+    <changeSet id="add_permission_to_walletying_5" author="sse">
+        <sql>
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+
+    <changeSet id="add_leg_column_trade" author="sse">
+        <addColumn tableName="trade">
+            <column name="balance_leg_id" type="bigint"></column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="trade" baseColumnNames="balance_leg_id" constraintName="trade_balance_leg_id_balance_leg_id" referencedTableName="balance_leg"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet id="add_column_balance_leg_qty" author="sse">
+        <addColumn tableName="balance_leg">
+            <column name="qty" type="number(24,12)"></column>
+            <column name="cost_as_btc" type="number(24,12)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add_column_balance_realized_leg_qty" author="sse">
+        <addColumn tableName="balance_leg">
+            <column name="realized_buy_value" type="number(24,12)"></column>
+            <column name="realized_sell_value" type="number(24,12)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add_pnl_percent_column_trade" author="sse">
+        <addColumn tableName="trade">
+            <column name="btc_pnl_percent" type="number(24,12)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add_permission_to_walletying_6" author="sse">
+        <sql>
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO walletying;
+            GRANT ALL PRIVILEGES ON DATABASE walletying TO walletying;
+        </sql>
+    </changeSet>
+
+
+    <changeSet id="balance_leg_fk_edit" author="sse">
+        <dropForeignKeyConstraint baseTableName="balance_leg" constraintName="balance_leg_balance_id_balance_id"/>
+        <addForeignKeyConstraint baseTableName="balance_leg" baseColumnNames="balance_id" constraintName="balance_leg_balance_id_balance_id" referencedTableName="balance"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="add_lang_login_4" author="sse">
+        <sql>call add_language('en','LOGIN.SIGNIN','Sign in')</sql>
+        <sql>call add_language('tr','LOGIN.SIGNIN','Oturum aç')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_menu_3" author="sse">
+        <sql>call add_language('en','MENU.SUMMARY','Summary')</sql>
+        <sql>call add_language('tr','MENU.SUMMARY','Özet')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_menu_4" author="sse">
+        <sql>call add_language('en','MENU.FEATURES','Features')</sql>
+        <sql>call add_language('tr','MENU.FEATURES','Özellikler')</sql>
+        <sql>call add_language('en','MENU.PRICING','Pricing')</sql>
+        <sql>call add_language('tr','MENU.PRICING','Ücretlendirme')</sql>
+    </changeSet>
+
+    <changeSet id="add_lang_signup_2" author="sse">
+        <sql>call add_language('en','SIGNUP.SIGNUP','Sign up')</sql>
+        <sql>call add_language('tr','SIGNUP.SIGNUP','kayıt ol')</sql>
+    </changeSet>
+
+    <changeSet id="add_leg_column_withdraw" author="sse">
+        <addColumn tableName="withdraw">
+            <column name="balance_leg_id" type="bigint"></column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="withdraw" baseColumnNames="balance_leg_id" constraintName="withdraw_balance_leg_id_balance_leg_id" referencedTableName="balance_leg"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="add_leg_column_deposit" author="sse">
+        <addColumn tableName="deposit">
+            <column name="balance_leg_id" type="bigint"></column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="deposit" baseColumnNames="balance_leg_id" constraintName="deposit_balance_leg_id_balance_leg_id" referencedTableName="balance_leg"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="add_column_withdraw_btc" author="sse">
+        <addColumn tableName="withdraw">
+            <column name="btc_value" type="number(24,12)"></column>
+            <column name="btc_usd_price" type="number(24,12)" remarks="timedaki btc nin usd değeri"></column>
+            <column name="user_currency_value" type="number(24,12)" remarks="timedaki btcnin kullancının istediği birimdeki değeri(örn. BTCTRY)"></column>
+            <column name="commission_btc_value" type="number(24,12)" remarks="komisyonun btc türünden timedaki değeri"></column>
+            <column name="btc_pnl" type="number(24,12)" remarks="kar zarar sonucu,btc cinsinden"></column>
+            <column name="btc_pnl_percent" type="number(24,12)"></column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add_column_deposit_btc" author="sse">
+        <addColumn tableName="deposit">
+            <column name="btc_value" type="number(24,12)"></column>
+            <column name="btc_usd_price" type="number(24,12)" remarks="timedaki btc nin usd değeri"></column>
+            <column name="user_currency_value" type="number(24,12)" remarks="timedaki btcnin kullancının istediği birimdeki değeri(örn. BTCTRY)"></column>
+            <column name="commission_btc_value" type="number(24,12)" remarks="komisyonun btc türünden timedaki değeri"></column>
+            <column name="btc_pnl" type="number(24,12)" remarks="kar zarar sonucu,btc cinsinden"></column>
+            <column name="btc_pnl_percent" type="number(24,12)"></column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

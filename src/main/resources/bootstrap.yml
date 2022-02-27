@@ -1,0 +1,13 @@
+spring:
+  profiles:
+    active: 'dev'
+  cloud:
+    config:
+      uri: http://localhost:91
+  application:
+    name: walletying
+  liquibase:
+    change-log: classpath:/db/base-changeLog.xml
+    enabled: true
+    user: postgres
+
